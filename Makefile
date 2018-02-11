@@ -5,7 +5,7 @@ PIPOPTIONS=--default-timeout=100
 
 # Set a specific path for the Python executable if anaconda is the primary
 # distribution on your system.
-PYTHON3=python3.6
+PYTHON3?=python3.6
 
 all: env/bin/python
 

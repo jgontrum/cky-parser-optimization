@@ -7,7 +7,7 @@ setup(
     author='Johannes Gontrum',
     author_email='gontrum@me.com',
     include_package_data=True,
-    license='MIT license',
+    license='MPL 2.0',
     entry_points={
           'console_scripts': [
               'treebank_to_cnf = pcfg_parser.scripts.treebank_to_cnf:main',
