@@ -12,7 +12,6 @@ def parse(data):
     t0 = time()
     sentence_id, sentence, parser = data
     tree = parser.parse(sentence)
-    print(f"Finished {sentence_id}.", file=stderr)
     return json.dumps(tree), time() - t0
 
 

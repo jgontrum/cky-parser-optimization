@@ -1,5 +1,6 @@
 # from __future__ import division
 import math
+from collections import defaultdict
 from json import loads
 
 # from stat_parser.word_classes import word_class
@@ -38,6 +39,7 @@ class PCFG():
         size = max(self.non_terminals) + 1
         self.rhs_to_lhs_id = dok_matrix((size, size), dtype=np.int32)
         self.terminal_rule_to_lhs_id = {}
+        self.first_rhs_to_second_rhs = defaultdict(set)
 
         for i, (lhs, rhs, prob) in enumerate(self.rule_cache):
             rhs_1 = rhs[0]
@@ -50,6 +52,7 @@ class PCFG():
                 # non terminals
                 rhs_2 = rhs[1]
                 self.rhs_to_lhs_id[rhs_1, rhs_2] = lhs_id
+                self.first_rhs_to_second_rhs[rhs_1].add(rhs_2)
 
         self.rhs_to_lhs_id = self.rhs_to_lhs_id.toarray()
         self.id_to_lhs = np.asarray(self.id_to_lhs, dtype=object)

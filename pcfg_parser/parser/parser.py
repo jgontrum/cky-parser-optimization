@@ -2,7 +2,11 @@
 CKY algorithm from the "Natural Language Processing" course by Michael Collins
 https://class.coursera.org/nlangp-001/class
 """
+import json
+import os
 from itertools import chain
+from sys import stderr
+from time import time
 
 import numpy as np
 
@@ -36,6 +40,7 @@ class Parser:
     def __init__(self, pcfg):
         self.pcfg = pcfg
         self.tokenizer = PennTreebankTokenizer()
+        self.matrix_lookup_threshold = os.environ.get("MATRIXTHRESHOLD", 1000)
 
     def parse(self, sentence):
         words = self.tokenizer.tokenize(sentence)
@@ -70,6 +75,10 @@ class Parser:
         ]
 
     def cky(self, pcfg, norm_words):
+        matrix_stats = 0
+        loop_stats = 0
+        t0 = time()
+
         # Initialize your charts (for scores and backpointers)
         size = len(norm_words)
         chart = [[{} for _ in range(size)] for _ in range(size)]
@@ -91,35 +100,16 @@ class Parser:
                     first_nts = chart[i][k]
                     second_nts = chart[k + 1][j]
 
-                    first_symbols = np.array(list(first_nts.keys()))
-                    second_symbols = np.array(list(second_nts.keys()))
+                    if len(first_nts) > self.matrix_lookup_threshold \
+                            and len(second_nts) > self.matrix_lookup_threshold:
+                        lookup = self.__matrix_based_lookup
+                        matrix_stats += 1
+                    else:
+                        lookup = self.__loop_based_lookup
+                        loop_stats += 1
 
-                    if not first_symbols.size or not second_symbols.size:
-                        continue
-
-                    valid_rows = np.take(
-                        pcfg.rhs_to_lhs_id, first_symbols, axis=0)
-
-                    valid_ids = np.take(
-                        valid_rows, second_symbols, axis=1).flatten()
-
-                    non_zero = np.nonzero(valid_ids)
-
-                    lhs_ids = valid_ids[non_zero].flatten()
-
-                    if not lhs_ids.size:
-                        continue
-
-                    lhs_items = np.take(pcfg.id_to_lhs, lhs_ids, axis=0)
-
-                    for lhs, rhs_1, rhs_2, prob in chain(*lhs_items):
-                        rhs_1_cell = first_nts[rhs_1]
-                        rhs_2_cell = second_nts[rhs_2]
-
-                        probability = rhs_1_cell.probability
-                        probability += rhs_2_cell.probability
-                        probability += prob
-
+                    for entry in lookup(first_nts, second_nts, pcfg):
+                        lhs, rhs_1, rhs_2, probability = entry
                         existing_item = chart[i][j].get(lhs)
                         if not existing_item \
                                 or existing_item.probability < probability:
@@ -128,7 +118,69 @@ class Parser:
                                              (k + 1, j, rhs_2))
                             chart[i][j][lhs] = item
 
+        stats = {
+            "time": time() - t0,
+            "length": len(norm_words),
+            "matrix": matrix_stats / (matrix_stats + loop_stats),
+            "matrix_abs": matrix_stats,
+            "lookups_abs": matrix_stats + loop_stats,
+            "threshold": self.matrix_lookup_threshold
+        }
+        print(json.dumps(stats), file=stderr)
         return self.backtrace(chart[0][-1][pcfg.start_symbol], chart, pcfg)
+
+    @staticmethod
+    def __matrix_based_lookup(first_nts, second_nts, pcfg):
+        first_symbols = np.array(list(first_nts.keys()))
+        second_symbols = np.array(list(second_nts.keys()))
+
+        if not first_symbols.size or not second_symbols.size:
+            return []
+
+        valid_rows = np.take(
+            pcfg.rhs_to_lhs_id, first_symbols, axis=0)
+
+        valid_ids = np.take(
+            valid_rows, second_symbols, axis=1).flatten()
+
+        non_zero = np.nonzero(valid_ids)
+
+        lhs_ids = valid_ids[non_zero].flatten()
+
+        if not lhs_ids.size:
+            return []
+
+        lhs_items = np.take(pcfg.id_to_lhs, lhs_ids, axis=0)
+
+        for lhs, rhs_1, rhs_2, prob in chain(*lhs_items):
+            rhs_1_cell = first_nts[rhs_1]
+            rhs_2_cell = second_nts[rhs_2]
+
+            probability = rhs_1_cell.probability
+            probability += rhs_2_cell.probability
+            probability += prob
+
+            yield lhs, rhs_1, rhs_2, probability
+
+    @staticmethod
+    def __loop_based_lookup(first_nts, second_nts, pcfg):
+        second_symbols = second_nts.keys()
+
+        for rhs_1 in first_nts.values():
+            possible_rhs2 = \
+                pcfg.first_rhs_to_second_rhs[
+                    rhs_1.symbol].intersection(
+                    second_symbols)
+
+            for rhs_2_symbol in possible_rhs2:
+                rhs_2 = second_nts[rhs_2_symbol]
+
+                for lhs, _, _, prob in pcfg.get_lhs(rhs_1.symbol, rhs_2.symbol):
+                    probability = rhs_1.probability
+                    probability += rhs_2.probability
+                    probability += prob
+
+                    yield lhs, rhs_1.symbol, rhs_2.symbol, probability
 
     def print_chart(self, chart):
         print("    |" + "".join([f"{i:^20}|" for i in range(len(chart))]))
