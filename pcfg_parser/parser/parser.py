@@ -40,7 +40,8 @@ class Parser:
     def __init__(self, pcfg):
         self.pcfg = pcfg
         self.tokenizer = PennTreebankTokenizer()
-        self.matrix_lookup_threshold = os.environ.get("MATRIXTHRESHOLD", 1000)
+        self.matrix_lookup_threshold = int(
+            os.environ.get("MATRIXTHRESHOLD", 1000))
 
     def parse(self, sentence):
         words = self.tokenizer.tokenize(sentence)
