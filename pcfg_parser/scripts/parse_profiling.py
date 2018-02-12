@@ -1,7 +1,6 @@
 import argparse
 import json
-from multiprocessing.pool import Pool
-from sys import stderr, stdin
+from sys import stderr
 from time import time
 
 from pcfg_parser.parser.parser import Parser
@@ -21,12 +20,10 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--grammar", help="Path to grammar file.",
                         type=str, required=True)
-    parser.add_argument("--threads", help="Number of threads to run on.",
-                        type=int, required=False, default=4)
+
     args = parser.parse_args()
 
     grammar_file = args.grammar
-    threads = args.threads
 
     print("Loading grammar from " + grammar_file + " ...", file=stderr)
 
@@ -35,7 +32,18 @@ def main():
     parser = Parser(pcfg)
 
     print("Parsing sentences ...", file=stderr)
-    sentences = [sentence.strip() for sentence in stdin]
+
+    sentences = [
+        "Champagne and dessert followed .",
+        "The governor could n't make it , so the lieutenant governor welcomed the special guests .",
+        "He had been a sales and marketing executive with Chrysler for 20 years .",
+        "Champagne and dessert followed .",
+        "The governor could n't make it , so the lieutenant governor welcomed the special guests .",
+        "He had been a sales and marketing executive with Chrysler for 20 years .",
+        "Champagne and dessert followed .",
+        "The governor could n't make it , so the lieutenant governor welcomed the special guests .",
+        "He had been a sales and marketing executive with Chrysler for 20 years ."
+    ]
 
     print(f"Received {len(sentences)} sentences...", file=stderr)
 
@@ -43,19 +51,14 @@ def main():
         (i, sentence, parser) for i, sentence in enumerate(sentences)
     ]
 
-    with Pool(processes=threads) as pool:
-        print(f"Pool initialized, start parsing now.", file=stderr)
-        output = pool.map(parse, input)
+    output = [parse(s) for s in input]
 
-        runtime = 0
-        for sentence, t in output:
-            runtime += t
-            print(sentence)
+    runtime = 0
+    for sentence, t in output:
+        runtime += t
+        print(sentence)
 
-        print("Time: (%.2f)s    \n" % runtime, file=stderr)
-
-        pool.close()
-        pool.join()
+    print("Time: (%.2f)s    \n" % runtime, file=stderr)
 
 
 if __name__ == "__main__":

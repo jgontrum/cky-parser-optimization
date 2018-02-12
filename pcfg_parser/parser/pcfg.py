@@ -80,8 +80,6 @@ class PCFG():
 
             item = (lhs, math.log(prob))
 
-            print(item)
-
             lhs_id = self.rhs_to_lhs_cache.get(tuple(rhs))
 
             if lhs_id is None:
