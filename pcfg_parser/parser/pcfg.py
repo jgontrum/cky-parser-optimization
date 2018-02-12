@@ -45,7 +45,6 @@ class PCFG():
             self.first_rhs_to_second_rhs[rhs_1].add(rhs_2)
 
         self.rhs_to_lhs_id = self.rhs_to_lhs_id.tocsr()
-        self.id_to_lhs = np.asarray(self.id_to_lhs)
 
         self.rule_cache.clear()
 
@@ -58,40 +57,41 @@ class PCFG():
         self.word_to_id[word] = new_id
         return new_id
 
-    def load_model(self, path):
+    def load_model(self, model):
         self.rule_cache = []
         self.id_to_lhs = []
         self.rhs_to_lhs_cache = {}
 
-        with open(path) as model:
-            for line in model:
-                data = loads(line)
+        for line in model:
+            data = loads(line)
 
-                if data[0] == 'WORDS':
-                    self.well_known_words = data[1]
-                    for word in self.well_known_words:
-                        self.__add_to_signature(word)
-                    continue
+            if data[0] == 'WORDS':
+                self.well_known_words = data[1]
+                for word in self.well_known_words:
+                    self.__add_to_signature(word)
+                continue
 
-                lhs_raw = data[1]
-                rhs_raw = data[2:-1]
-                prob = data[-1]
+            lhs_raw = data[1]
+            rhs_raw = data[2:-1]
+            prob = data[-1]
 
-                lhs = self.__add_to_signature(lhs_raw)
-                rhs = [self.__add_to_signature(sym) for sym in rhs_raw]
+            lhs = self.__add_to_signature(lhs_raw)
+            rhs = [self.__add_to_signature(sym) for sym in rhs_raw]
 
-                item = (lhs, math.log(prob))
+            item = (lhs, math.log(prob))
 
-                lhs_id = self.rhs_to_lhs_cache.get(tuple(rhs))
+            print(item)
 
-                if lhs_id is None:
-                    self.id_to_lhs.append([item])
-                    lhs_id = len(self.id_to_lhs)
-                    self.rhs_to_lhs_cache[tuple(rhs)] = lhs_id
-                else:
-                    self.id_to_lhs[lhs_id - 1].append(item)
+            lhs_id = self.rhs_to_lhs_cache.get(tuple(rhs))
 
-                self.rule_cache.append((lhs, rhs, prob))
+            if lhs_id is None:
+                self.id_to_lhs.append([item])
+                lhs_id = len(self.id_to_lhs)
+                self.rhs_to_lhs_cache[tuple(rhs)] = lhs_id
+            else:
+                self.id_to_lhs[lhs_id - 1].append(item)
+
+            self.rule_cache.append((lhs, rhs, prob))
 
         self.__add_to_signature("_RARE_")
         self.__build_caches()

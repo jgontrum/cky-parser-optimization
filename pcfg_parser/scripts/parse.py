@@ -25,14 +25,13 @@ def main():
                         type=int, required=False, default=4)
     args = parser.parse_args()
 
-    start = time()
     grammar_file = args.grammar
     threads = args.threads
 
     print("Loading grammar from " + grammar_file + " ...", file=stderr)
 
     pcfg = PCFG()
-    pcfg.load_model(grammar_file)
+    pcfg.load_model(open(grammar_file))
     parser = Parser(pcfg)
 
     print("Parsing sentences ...", file=stderr)
