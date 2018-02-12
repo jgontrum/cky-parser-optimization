@@ -6,6 +6,10 @@ from time import time
 from pcfg_parser.parser.parser import Parser
 from pcfg_parser.parser.pcfg import PCFG
 
+"""
+Mostly a copy of parse.py, but with fixed input and without multithreading.
+Profiler creates clearer and better interpretable results this way.
+"""
 
 def parse(data):
     t0 = time()
