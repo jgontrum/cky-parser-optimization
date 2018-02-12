@@ -54,9 +54,9 @@ class PCFG():
         self.rhs_to_lhs_id = self.rhs_to_lhs_id.toarray()
         self.id_to_lhs = np.asarray(self.id_to_lhs, dtype=object)
 
-        print(self.id_to_lhs)
-
         self.rule_cache.clear()
+        self.terminals.clear()
+        self.non_terminals.clear()
 
     def __add_to_signature(self, word):
         if word in self.word_to_id:
@@ -69,7 +69,7 @@ class PCFG():
 
     def load_model(self, model):
         self.rule_cache = []
-        self.id_to_lhs = [None]
+        self.id_to_lhs = [[]]
         self.rhs_to_lhs_cache = {}
 
         self.non_terminals = set()
@@ -138,14 +138,5 @@ class PCFG():
             self.rule_cache.append((lhs, rhs, prob))
 
         self.__add_to_signature("_RARE_")
-
-        # TODO RM
-        # print(self.terminals)
-        # print(self.non_terminals)
-        #
-        # max_nt = max(self.non_terminals)
-        # for i in self.terminals:
-        #     assert i > max_nt, print(i, self.get_word_for_id(i))
-        # # TODO
 
         self.__build_caches()

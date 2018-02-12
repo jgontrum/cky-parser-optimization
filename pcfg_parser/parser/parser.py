@@ -93,9 +93,6 @@ class Parser:
 
                     first_symbols = np.array(list(first_nts.keys()))
                     second_symbols = np.array(list(second_nts.keys()))
-                    #
-                    # print(first_symbols)
-                    # print(second_symbols)
 
                     if not first_symbols.size or not second_symbols.size:
                         continue
@@ -106,18 +103,15 @@ class Parser:
                     valid_ids = np.take(
                         valid_rows, second_symbols, axis=1).flatten()
 
-                    # print(valid_ids)
+                    non_zero = np.nonzero(valid_ids)
 
-                    lhs_ids = np.take(
-                        valid_ids, np.nonzero(valid_ids)).flatten()
+                    lhs_ids = valid_ids[non_zero].flatten()
 
                     if not lhs_ids.size:
                         continue
 
                     lhs_items = np.take(pcfg.id_to_lhs, lhs_ids, axis=0)
 
-                    # print(lhs_ids)
-                    # print(lhs_items)
                     for lhs, rhs_1, rhs_2, prob in chain(*lhs_items):
                         rhs_1_cell = first_nts[rhs_1]
                         rhs_2_cell = second_nts[rhs_2]
@@ -135,7 +129,6 @@ class Parser:
                             chart[i][j][lhs] = item
 
         return self.backtrace(chart[0][-1][pcfg.start_symbol], chart, pcfg)
-
 
     def print_chart(self, chart):
         print("    |" + "".join([f"{i:^20}|" for i in range(len(chart))]))
