@@ -2,6 +2,9 @@
 CKY algorithm from the "Natural Language Processing" course by Michael Collins
 https://class.coursera.org/nlangp-001/class
 """
+from itertools import chain
+
+import numpy as np
 
 from pcfg_parser.parser.tokenizer import PennTreebankTokenizer
 
@@ -74,7 +77,7 @@ class Parser:
         # Code for adding the words to the chart
         for i, (norm, word) in enumerate(norm_words):
             id_ = pcfg.get_id_for_word(norm)
-            for lhs, prob in pcfg.get_lhs(id_):
+            for lhs, prob in pcfg.get_lhs_for_terminal_rule(id_):
                 item = ChartItem(lhs, prob, terminal=word)
                 existing_item = chart[i][i].get(lhs)
                 if not existing_item or \
@@ -88,31 +91,48 @@ class Parser:
                     first_nts = chart[i][k]
                     second_nts = chart[k + 1][j]
 
-                    second_symbols = second_nts.keys()
+                    first_symbols = np.array(list(first_nts.keys()))
+                    second_symbols = np.array(list(second_nts.keys()))
+                    #
+                    # print(first_symbols)
+                    # print(second_symbols)
 
-                    for rhs_1 in first_nts.values():
-                        possible_rhs2 = \
-                            pcfg.first_rhs_to_second_rhs[
-                                rhs_1.symbol].intersection(
-                                second_symbols)
+                    if not first_symbols.size or not second_symbols.size:
+                        continue
 
-                        for rhs_2_symbol in possible_rhs2:
-                            rhs_2 = second_nts[rhs_2_symbol]
+                    valid_rows = np.take(
+                        pcfg.rhs_to_lhs_id, first_symbols, axis=0)
 
-                            for lhs, prob in pcfg.get_lhs(rhs_1.symbol,
-                                                          rhs_2.symbol):
+                    valid_ids = np.take(
+                        valid_rows, second_symbols, axis=1).flatten()
 
-                                probability = rhs_1.probability
-                                probability += rhs_2.probability
-                                probability += prob
+                    # print(valid_ids)
 
-                                existing_item = chart[i][j].get(lhs)
-                                if not existing_item \
-                                        or existing_item.probability < probability:
-                                    item = ChartItem(lhs, probability,
-                                                     (i, k, rhs_1.symbol),
-                                                     (k + 1, j, rhs_2.symbol))
-                                    chart[i][j][lhs] = item
+                    lhs_ids = np.take(
+                        valid_ids, np.nonzero(valid_ids)).flatten()
+
+                    if not lhs_ids.size:
+                        continue
+
+                    lhs_items = np.take(pcfg.id_to_lhs, lhs_ids, axis=0)
+
+                    # print(lhs_ids)
+                    # print(lhs_items)
+                    for lhs, rhs_1, rhs_2, prob in chain(*lhs_items):
+                        rhs_1_cell = first_nts[rhs_1]
+                        rhs_2_cell = second_nts[rhs_2]
+
+                        probability = rhs_1_cell.probability
+                        probability += rhs_2_cell.probability
+                        probability += prob
+
+                        existing_item = chart[i][j].get(lhs)
+                        if not existing_item \
+                                or existing_item.probability < probability:
+                            item = ChartItem(lhs, probability,
+                                             (i, k, rhs_1),
+                                             (k + 1, j, rhs_2))
+                            chart[i][j][lhs] = item
 
         return self.backtrace(chart[0][-1][pcfg.start_symbol], chart, pcfg)
 

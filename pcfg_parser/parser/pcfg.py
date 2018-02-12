@@ -1,6 +1,5 @@
 # from __future__ import division
 import math
-from collections import defaultdict
 from json import loads
 
 # from stat_parser.word_classes import word_class
@@ -11,8 +10,9 @@ from scipy.sparse import dok_matrix
 class PCFG():
 
     def __init__(self, start_symbol="S"):
-        self.word_to_id = {"UNARY": 0}
-        self.id_to_word = ["UNARY"]
+        # '0' is reserved for the sparse matrix.
+        self.word_to_id = {"DUMMY": 0}
+        self.id_to_word = ["DUMMY"]
 
         self.well_known_words = {}
         self.start_symbol = self.__add_to_signature(start_symbol)
@@ -20,9 +20,13 @@ class PCFG():
     def norm_word(self, word):
         return word if word in self.well_known_words else "_RARE_"
 
-    def get_lhs(self, rhs_1, rhs_2=0):
+    def get_lhs(self, rhs_1, rhs_2):
         lhs_id = self.rhs_to_lhs_id[rhs_1, rhs_2]
-        return self.id_to_lhs[lhs_id - 1]
+        return self.id_to_lhs[lhs_id]
+
+    def get_lhs_for_terminal_rule(self, rhs_1):
+        lhs_id = self.terminal_rule_to_lhs_id[rhs_1]
+        return self.id_to_lhs[lhs_id]
 
     def get_id_for_word(self, word):
         return self.word_to_id.get(word)
@@ -31,20 +35,26 @@ class PCFG():
         return self.id_to_word[id_]
 
     def __build_caches(self):
-        size = len(self.id_to_word)
+        size = max(self.non_terminals) + 1
         self.rhs_to_lhs_id = dok_matrix((size, size), dtype=np.int32)
-        self.first_rhs_to_second_rhs = defaultdict(set)
+        self.terminal_rule_to_lhs_id = {}
 
         for i, (lhs, rhs, prob) in enumerate(self.rule_cache):
             rhs_1 = rhs[0]
-            rhs_2 = rhs[1] if len(rhs) > 1 else 0
 
             lhs_id = self.rhs_to_lhs_cache[tuple(rhs)]
+            if len(rhs) == 1:
+                # terminal rules
+                self.terminal_rule_to_lhs_id[rhs_1] = lhs_id
+            else:
+                # non terminals
+                rhs_2 = rhs[1]
+                self.rhs_to_lhs_id[rhs_1, rhs_2] = lhs_id
 
-            self.rhs_to_lhs_id[rhs_1, rhs_2] = lhs_id
-            self.first_rhs_to_second_rhs[rhs_1].add(rhs_2)
+        self.rhs_to_lhs_id = self.rhs_to_lhs_id.toarray()
+        self.id_to_lhs = np.asarray(self.id_to_lhs, dtype=object)
 
-        self.rhs_to_lhs_id = self.rhs_to_lhs_id.tocsr()
+        print(self.id_to_lhs)
 
         self.rule_cache.clear()
 
@@ -59,12 +69,48 @@ class PCFG():
 
     def load_model(self, model):
         self.rule_cache = []
-        self.id_to_lhs = []
+        self.id_to_lhs = [None]
         self.rhs_to_lhs_cache = {}
 
+        self.non_terminals = set()
+        self.terminals = set()
+
+        non_binary_rules_cache = []
+
+        # Binary rules that contain only non terminals must be handled
+        # before any terminals, so that the range of their ids starts at 0
+        # and is continous.
+        # This is important for an efficient matrix construction.
         for line in model:
             data = loads(line)
 
+            if data[0] != "Q2":
+                non_binary_rules_cache.append(data)
+                continue
+
+            lhs_raw = data[1]
+            rhs_raw = data[2:-1]
+            prob = data[-1]
+
+            lhs = self.__add_to_signature(lhs_raw)
+            rhs = [self.__add_to_signature(sym) for sym in rhs_raw]
+
+            self.non_terminals.add(rhs[0])
+            self.non_terminals.add(rhs[1])
+            item = (lhs, rhs[0], rhs[1], math.log(prob))
+
+            lhs_id = self.rhs_to_lhs_cache.get(tuple(rhs))
+            if lhs_id is None:
+                lhs_id = len(self.id_to_lhs)
+                self.id_to_lhs.append([item])
+                self.rhs_to_lhs_cache[tuple(rhs)] = lhs_id
+            else:
+                self.id_to_lhs[lhs_id].append(item)
+
+            self.rule_cache.append((lhs, rhs, prob))
+
+        # Now handle all other rules
+        for data in non_binary_rules_cache:
             if data[0] == 'WORDS':
                 self.well_known_words = data[1]
                 for word in self.well_known_words:
@@ -78,18 +124,28 @@ class PCFG():
             lhs = self.__add_to_signature(lhs_raw)
             rhs = [self.__add_to_signature(sym) for sym in rhs_raw]
 
+            self.terminals.add(rhs[0])
             item = (lhs, math.log(prob))
 
             lhs_id = self.rhs_to_lhs_cache.get(tuple(rhs))
-
             if lhs_id is None:
-                self.id_to_lhs.append([item])
                 lhs_id = len(self.id_to_lhs)
+                self.id_to_lhs.append([item])
                 self.rhs_to_lhs_cache[tuple(rhs)] = lhs_id
             else:
-                self.id_to_lhs[lhs_id - 1].append(item)
+                self.id_to_lhs[lhs_id].append(item)
 
             self.rule_cache.append((lhs, rhs, prob))
 
         self.__add_to_signature("_RARE_")
+
+        # TODO RM
+        # print(self.terminals)
+        # print(self.non_terminals)
+        #
+        # max_nt = max(self.non_terminals)
+        # for i in self.terminals:
+        #     assert i > max_nt, print(i, self.get_word_for_id(i))
+        # # TODO
+
         self.__build_caches()

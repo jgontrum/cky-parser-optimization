@@ -1,5 +1,7 @@
 import math
 
+import numpy as np
+
 from pcfg_parser.parser.pcfg import PCFG
 
 
@@ -23,5 +25,15 @@ def test_construct_pcfg():
         pcfg.get_id_for_word("VP")
     )
 
-    assert (pcfg.get_id_for_word("S"), math.log(1.0)) in lookup \
-           and len(lookup) == 1
+    item = [
+        pcfg.get_id_for_word("S"),
+        pcfg.get_id_for_word("NP"),
+        pcfg.get_id_for_word("VP"),
+        math.log(1.0)
+    ]
+    assert len(lookup) == 1
+    assert lookup[0][0] == item[0]
+    assert lookup[0][1] == item[1]
+    assert lookup[0][2] == item[2]
+    assert lookup[0][3] == item[3]
+
