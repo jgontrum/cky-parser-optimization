@@ -9,10 +9,11 @@ from pcfg_parser.parser.pcfg import PCFG
 
 
 def parse(data):
+    t0 = time()
     sentence_id, sentence, parser = data
     tree = parser.parse(sentence)
     print(f"Finished {sentence_id}.", file=stderr)
-    return json.dumps(tree)
+    return json.dumps(tree), time() - t0
 
 
 def main():
@@ -46,10 +47,13 @@ def main():
     with Pool(processes=threads) as pool:
         print(f"Pool initialized, start parsing now.", file=stderr)
         output = pool.map(parse, input)
-        print("Time: (%.2f)s    \n" % (time() - start), file=stderr)
 
-        for sentence in output:
+        runtime = 0
+        for sentence, t in output:
+            runtime = + t
             print(sentence)
+
+        print("Time: (%.2f)s    \n" % runtime, file=stderr)
 
         pool.close()
         pool.join()
