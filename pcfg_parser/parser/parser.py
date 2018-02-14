@@ -2,6 +2,9 @@
 CKY algorithm from the "Natural Language Processing" course by Michael Collins
 https://class.coursera.org/nlangp-001/class
 """
+import json
+from sys import stderr
+from time import time
 
 from pcfg_parser.parser.tokenizer import PennTreebankTokenizer
 
@@ -67,6 +70,8 @@ class Parser:
         ]
 
     def cky(self, pcfg, norm_words):
+        t0 = time()
+
         # Initialize your charts (for scores and backpointers)
         size = len(norm_words)
         chart = [[{} for _ in range(size)] for _ in range(size)]
@@ -113,7 +118,11 @@ class Parser:
                                                      (i, k, rhs_1.symbol),
                                                      (k + 1, j, rhs_2.symbol))
                                     chart[i][j][lhs] = item
-
+        stats = {
+            "time": time() - t0,
+            "length": len(norm_words)
+        }
+        print(json.dumps(stats), file=stderr)
         return self.backtrace(chart[0][-1][pcfg.start_symbol], chart, pcfg)
 
 
