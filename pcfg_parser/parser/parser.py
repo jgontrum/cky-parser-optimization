@@ -6,6 +6,8 @@ import json
 from sys import stderr
 from time import time
 
+import itertools
+
 from pcfg_parser.parser.tokenizer import PennTreebankTokenizer
 
 
@@ -93,16 +95,8 @@ class Parser:
                     first_nts = chart[i][k]
                     second_nts = chart[k + 1][j]
 
-                    second_symbols = second_nts.keys()
-
-                    for rhs_1 in first_nts.values():
-                        possible_rhs2 = \
-                            pcfg.first_rhs_to_second_rhs[
-                                rhs_1.symbol].intersection(
-                                second_symbols)
-
-                        for rhs_2_symbol in possible_rhs2:
-                            rhs_2 = second_nts[rhs_2_symbol]
+                    for rhs_1, rhs_2 in itertools.product(
+                            first_nts.values(), second_nts.values()):
 
                             for lhs, prob in pcfg.get_lhs(rhs_1.symbol,
                                                           rhs_2.symbol):
