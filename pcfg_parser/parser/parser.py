@@ -93,22 +93,14 @@ class Parser:
                     first_nts = chart[i][k]
                     second_nts = chart[k + 1][j]
 
-                    second_symbols = second_nts.keys()
                     first_symbols = pcfg.first_rhs_symbols
 
                     possible_rhs1 = first_symbols.intersection(first_nts)
 
                     for rhs_1_symbol in possible_rhs1:
                         rhs_1 = first_nts[rhs_1_symbol]
-                        
-                        possible_rhs2 = \
-                            pcfg.first_rhs_to_second_rhs[
-                                rhs_1_symbol].intersection(
-                                second_symbols)
 
-                        for rhs_2_symbol in possible_rhs2:
-                            rhs_2 = second_nts[rhs_2_symbol]
-
+                        for rhs_2 in second_nts.values():
                             for lhs, prob in pcfg.get_lhs(rhs_1_symbol,
                                                           rhs_2.symbol):
 
