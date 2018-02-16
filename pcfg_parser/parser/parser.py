@@ -78,6 +78,7 @@ class Parser:
     def cky(self, pcfg, norm_words):
         matrix_stats = 0
         loop_stats = 0
+
         t0 = time()
 
         # Initialize your charts (for scores and backpointers)

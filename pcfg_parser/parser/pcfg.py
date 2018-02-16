@@ -57,6 +57,8 @@ class PCFG():
         self.rhs_to_lhs_id = self.rhs_to_lhs_id.toarray()
         self.id_to_lhs = np.asarray(self.id_to_lhs, dtype=object)
 
+        self.first_rhs_symbols = set(self.first_rhs_to_second_rhs.keys())
+
         self.rule_cache.clear()
         self.terminals.clear()
         self.non_terminals.clear()
