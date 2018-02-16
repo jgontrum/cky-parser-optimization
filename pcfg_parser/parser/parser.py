@@ -94,17 +94,22 @@ class Parser:
                     second_nts = chart[k + 1][j]
 
                     second_symbols = second_nts.keys()
+                    first_symbols = pcfg.first_rhs_symbols
 
-                    for rhs_1 in first_nts.values():
+                    possible_rhs1 = first_symbols.intersection(first_nts)
+
+                    for rhs_1_symbol in possible_rhs1:
+                        rhs_1 = first_nts[rhs_1_symbol]
+                        
                         possible_rhs2 = \
                             pcfg.first_rhs_to_second_rhs[
-                                rhs_1.symbol].intersection(
+                                rhs_1_symbol].intersection(
                                 second_symbols)
 
                         for rhs_2_symbol in possible_rhs2:
                             rhs_2 = second_nts[rhs_2_symbol]
 
-                            for lhs, prob in pcfg.get_lhs(rhs_1.symbol,
+                            for lhs, prob in pcfg.get_lhs(rhs_1_symbol,
                                                           rhs_2.symbol):
 
                                 probability = rhs_1.probability
@@ -124,7 +129,6 @@ class Parser:
         }
         print(json.dumps(stats), file=stderr)
         return self.backtrace(chart[0][-1][pcfg.start_symbol], chart, pcfg)
-
 
     def print_chart(self, chart):
         print("    |" + "".join([f"{i:^20}|" for i in range(len(chart))]))

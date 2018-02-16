@@ -45,6 +45,7 @@ class PCFG():
             self.first_rhs_to_second_rhs[rhs_1].add(rhs_2)
 
         self.rhs_to_lhs_id = self.rhs_to_lhs_id.tocsr()
+        self.first_rhs_symbols = set(self.first_rhs_to_second_rhs.keys())
 
         self.rule_cache.clear()
 
