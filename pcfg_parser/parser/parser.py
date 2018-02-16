@@ -167,11 +167,16 @@ class Parser:
     @staticmethod
     def __loop_based_lookup(first_nts, second_nts, pcfg):
         second_symbols = second_nts.keys()
+        first_symbols = pcfg.first_rhs_symbols
 
-        for rhs_1 in first_nts.values():
+        possible_rhs1 = first_symbols.intersection(first_nts)
+
+        for rhs_1_symbol in possible_rhs1:
+            rhs_1 = first_nts[rhs_1_symbol]
+
             possible_rhs2 = \
                 pcfg.first_rhs_to_second_rhs[
-                    rhs_1.symbol].intersection(
+                    rhs_1_symbol].intersection(
                     second_symbols)
 
             for rhs_2_symbol in possible_rhs2:
