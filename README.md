@@ -1,7 +1,7 @@
 # CKY Parse Time Optimization
 The parsing algorithm itself leaves few opportunities for significant (basic) speed improvements, while guaranteeing to return the optimal parse. During the iteration over rows, columns and cells, the lookup in the parse chart is the most expensive operation. Since the chart is often represented as a list of lists, the index based access will be very fast. Also, the cells are implemented here as a dictionary from a symbol to information about its construction (backpointers) and probability. The values of the dictionary are accessed not more than two times per matched rule and the symbol information are represented as an object of the `ChartItem` class to guarantee efficiency while maintaining code readability. If one does not use techniques like pruning or heuristics, the algorithm itself is hard to optimize any further.
 
-The implementation of the PCFG on the other hand can be improved to drastically speed up the parsing process. **In fact, I managed to optimize the time to parse the test set from ~31 hours to only 64 minutes.**
+The implementation of the PCFG on the other hand can be improved to drastically speed up the parsing process. **In fact, I managed to optimize the time to parse the test set from ~31 hours to only 53 minutes.**
 
 # Build the project
 
@@ -81,10 +81,10 @@ To make use of the multithreading, the following experiments are performed on a 
 
 **Results**
 
-|          | **Intersection First**      | **Intersection Second** | **Intersection Both**                     |
-| -------- | --------------------------- | ----------------------- | ----------------------------------------- |
-| **Time** | Not finished after >900 min |                         | 207 min                                   |
-| **Logs** | -                           | Pastebin                | [Pastebin](https://pastebin.com/Tdgf70ky) |
+|          | **Intersection First**      | **Intersection Second**                       | **Intersection Both**                     |
+| -------- | --------------------------- | --------------------------------------------- | ----------------------------------------- |
+| **Time** | Not finished after >900 min | **401 min**                                   | 207 min                                   |
+| **Logs** | -                           | [**Pastebin**](https://pastebin.com/4wdwndyi) | [Pastebin](https://pastebin.com/Tdgf70ky) |
 
 
 Further investigation with a profiler showed that the parser spends a large amount of time intersecting two sets.
@@ -163,9 +163,18 @@ The test set was parsed in 802 min. The detailed output can be found [here](http
 
 Assuming that the intersection model performs well for cells with few values and the matrix model to perform well for cells with a huge amount for entries compensating the overhead, I created a third model that combines both approaches.
 
-Here I use a threshold value to decide which approach to choose. When the number of elements in the first and second cell are larger than the threshold, the matrix lookup is performed, otherwise the intersection (second symbols only).
+Here I use a threshold value to decide which approach to choose. When the number of elements in the first and second cell are larger than the threshold, the matrix lookup is performed, otherwise the intersection.
 
 **Results**
+**Intersecting both symbols:** 
+
+| **Threshold** | **Time**   | **Results**                                   |
+| ------------- | ---------- | --------------------------------------------- |
+| **1000**      | 168 min    | [Pastebin](https://pastebin.com/b9aFgGhb)     |
+| **3000**      | **53 min** | [**Pastebin**](https://pastebin.com/3EXD33sY) |
+
+
+**Intersecting second symbol:**
 
 | **Threshold**         | **Time**   | **Results**                                   |
 | --------------------- | ---------- | --------------------------------------------- |
@@ -177,15 +186,22 @@ Here I use a threshold value to decide which approach to choose. When the number
 | **Only Intersection** | 65 min     | [Pastebin](https://pastebin.com/DcxT7ZV2)     |
 
 
-The following graph shows the parse time per sentence length. The time for sentences with the same length has been averaged. [Link to interactive graph.](https://docs.google.com/spreadsheets/d/e/2PACX-1vQWpZIeK6AD57I4uALOQdK4hJuhRsXP8f93ZayjqnxU2O9TvoO_EQSta7ToIPfrqxeUkpnN0tGvMLU_/pubchart?oid=1749918744&format=interactive) The code at the time of the experiments is in the tag [model3/hybrid](https://github.com/jgontrum/uu-lt-syntactic-parsing/tree/model3/hybrid).
+The following graph shows the parse time per sentence length for the experiment using intersection only for the second symbol. The time for sentences with the same length has been averaged. [Link to interactive graph.](https://docs.google.com/spreadsheets/d/e/2PACX-1vQWpZIeK6AD57I4uALOQdK4hJuhRsXP8f93ZayjqnxU2O9TvoO_EQSta7ToIPfrqxeUkpnN0tGvMLU_/pubchart?oid=1749918744&format=interactive)
 
 ![](https://d2mxuefqeaa7sj.cloudfront.net/s_AC3A7690987781C1E70E665F151FB9466C4BA0FD2D594B7C7FC343EAE4C9678B_1518784019907_chart+1.png)
 
+
+The code at the time of the experiments is in the tag [model3/hybrid](https://github.com/jgontrum/uu-lt-syntactic-parsing/tree/model3/hybrid).
+
 # Discussion
 
-Overall, the best performing approach is the hybrid model, where the matrix operation based lookup is used for only a few and very large cells. In fact, the performance gain compared to the only intersection based run is neglectable. As there is a dramatic difference between said performance (65min) and the intersection experiments (XXX min), I argue that the data structures used in model 2 are to blame for the differences. A lookup in a sparse matrix seems to come with a huge overhead, while a smaller NumPy array can be accessed very quickly. 
+Overall, the best performing approach is the hybrid model, where the matrix operation based lookup is used for only a few and very large cells. However, the, in the experiment where only the second symbol is intersected, the performance gain compared to the only intersection based run is neglectable. 
+
+As there is a dramatic difference between said performance and the intersection experiments (401 min), I argue that the data structures used in model 2 are to blame for the differences. A lookup in a sparse matrix seems to come with a huge overhead, while a smaller NumPy array can be accessed very quickly. 
 
 Nevertheless, I find the idea behind the matrix lookup intriguing and wonder if it can be possibly extended in a way to precompute a matrix for multiple cells at a time.
+
+However, in the end of my experiments I started to doubt the times measured. Apparently, the CPU performance of the used server varies depending on the time and date, as it might be shared with other users. Despite of it, a general trend is recognizable, making the hybrid model with a threshold of 3000 the best performing configuration.
 
 The GitHub repository for the project can be found [here](https://github.com/jgontrum/uu-lt-syntactic-parsing).
 
